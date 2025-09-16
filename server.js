@@ -1,61 +1,44 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
 
 app.use(cors());
 app.use(express.json());
-// Serve static files (driver.html, user.html, any client assets)
-app.use(express.static(__dirname));
+app.use(express.static(__dirname)); // serve driver.html & user.html
 
-// Ensure data file exists
-if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ driver: null }, null, 2));
-}
+// store driver location
+let driverLocation = {};
 
-function readData() {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-  } catch (e) {
-    return { driver: null };
-  }
-}
+// serve driver page
+app.get("/driver", (req, res) => {
+  res.sendFile(path.join(__dirname, "driver.html"));
+});
 
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+// serve user page
+app.get("/user", (req, res) => {
+  res.sendFile(path.join(__dirname, "user.html"));
+});
 
-// Endpoint driver calls to update location
-app.post('/location', (req, res) => {
-  const { lat, lng, heading, speed } = req.body;
-  if (typeof lat !== 'number' || typeof lng !== 'number') {
-    return res.status(400).json({ error: 'lat and lng must be numbers' });
-  }
+// driver updates location
+app.post("/location", (req, res) => {
+  const { lat, lng, accuracy } = req.body;
 
-  const data = readData();
-  data.driver = {
+  driverLocation = {
     lat,
     lng,
-    heading: heading || null,
-    speed: speed || null,
-    updatedAt: new Date().toISOString(),
+    accuracy: accuracy || null,
+    timestamp: Date.now()
   };
-  writeData(data);
-  return res.json({ ok: true });
+
+  console.log("Updated location:", driverLocation);
+  res.json({ status: "ok" });
 });
 
-// Endpoint user calls to get latest driver location
-app.get('/location', (req, res) => {
-  const data = readData();
-  res.json(data.driver || null);
+// user requests driver location
+app.get("/location", (req, res) => {
+  res.json(driverLocation);
 });
-
-// Optional: health
-app.get('/health', (req, res) => res.send('ok'));
-
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
