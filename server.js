@@ -1,34 +1,61 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
+// server.js
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, 'data.json');
 
-app.use(cors()); // allow all origins for now
+app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+// Serve static files (driver.html, user.html, any client assets)
+app.use(express.static(__dirname));
 
-let driverLocation = {};
+// Ensure data file exists
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ driver: null }, null, 2));
+}
 
-app.get("/driver", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "driver.html"));
+function readData() {
+  try {
+    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  } catch (e) {
+    return { driver: null };
+  }
+}
+
+function writeData(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
+
+// Endpoint driver calls to update location
+app.post('/location', (req, res) => {
+  const { lat, lng, heading, speed } = req.body;
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return res.status(400).json({ error: 'lat and lng must be numbers' });
+  }
+
+  const data = readData();
+  data.driver = {
+    lat,
+    lng,
+    heading: heading || null,
+    speed: speed || null,
+    updatedAt: new Date().toISOString(),
+  };
+  writeData(data);
+  return res.json({ ok: true });
 });
 
-app.get("/user", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "user.html"));
+// Endpoint user calls to get latest driver location
+app.get('/location', (req, res) => {
+  const data = readData();
+  res.json(data.driver || null);
 });
 
-app.post("/location", (req, res) => {
-  const { lat, lng, accuracy } = req.body;
-  driverLocation = { lat, lng, accuracy: accuracy || null, timestamp: Date.now() };
-  console.log("✅ Updated location:", driverLocation);
-  res.json({ status: "ok" });
-});
+// Optional: health
+app.get('/health', (req, res) => res.send('ok'));
 
-app.get("/location", (req, res) => {
-  res.json(driverLocation);
-});
-
-app.listen(PORT, () => console.log(`🚍 Server running on port ${PORT}`));
-
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
