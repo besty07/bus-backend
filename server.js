@@ -5,21 +5,27 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// ✅ Allow only your deployed frontend domain (replace this URL with your frontend deployment link)
+app.use(cors({
+  origin: ["https://your-frontend.onrender.com"]
+}));
+
 app.use(express.json());
-app.use(express.static(__dirname)); // serve driver.html & user.html
+
+// ✅ Serve static files from /public
+app.use(express.static(path.join(__dirname, "public")));
 
 // store driver location
 let driverLocation = {};
 
 // serve driver page
 app.get("/driver", (req, res) => {
-  res.sendFile(path.join(__dirname, "driver.html"));
+  res.sendFile(path.join(__dirname, "public", "driver.html"));
 });
 
 // serve user page
 app.get("/user", (req, res) => {
-  res.sendFile(path.join(__dirname, "user.html"));
+  res.sendFile(path.join(__dirname, "public", "user.html"));
 });
 
 // driver updates location
@@ -33,7 +39,7 @@ app.post("/location", (req, res) => {
     timestamp: Date.now()
   };
 
-  console.log("Updated location:", driverLocation);
+  console.log("✅ Updated location:", driverLocation);
   res.json({ status: "ok" });
 });
 
@@ -41,4 +47,6 @@ app.post("/location", (req, res) => {
 app.get("/location", (req, res) => {
   res.json(driverLocation);
 });
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => console.log(`🚍 Server running on port ${PORT}`));
+
